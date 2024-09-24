@@ -7,13 +7,9 @@ const session = require('express-session');
 const app = express();
 const port = 3000;
 
-// PostgreSQL pool configuration
+// PostgreSQL pool configuration using Neon connection string
 const pool = new Pool({
-    user: 'postgres', // replace with your PostgreSQL username
-    host: 'localhost',
-    database: 'postgres', // or your specific database name
-    password: '@AdminYokie', // replace with your PostgreSQL password
-    port: 5432,
+    connectionString: 'postgresql://postgresnmrbc_owner:AxBeF9Pfz2Rh@ep-misty-bread-a1z8p7q8-pooler.ap-southeast-1.aws.neon.tech/postgresnmrbc?sslmode=require'
 });
 
 // Middleware to parse URL-encoded bodies
@@ -64,17 +60,25 @@ app.get('/home.html', checkAuth, (req, res) => {
 // Handle form submission (protected route)
 app.post('/submit', checkAuth, async (req, res) => {
     try {
-        const barcodes = req.body.barcodes;
-        const dates = req.body.dates;
-        const components = req.body.components;
-        const volumes = req.body.volumes;
+        const { barcodes, dates, components, volumes } = req.body;
 
         const barcodeArray = Array.isArray(barcodes) ? barcodes : [barcodes];
         const dateArray = Array.isArray(dates) ? dates : [dates];
         const componentArray = Array.isArray(components) ? components : [components];
         const volumeArray = Array.isArray(volumes) ? volumes : [volumes];
 
-        let responseHtml = '<html><head><style>body { font-family: Arial, sans-serif; background-color: #f4f4f4; text-align: center; } .button-container { margin-top: 20px; } button { background-color: darkred; color: #fff; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 0 10px; } button:hover { background-color: red; }</style></head><body>';
+        let responseHtml = `
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; background-color: #f4f4f4; text-align: center; }
+                    .button-container { margin-top: 20px; }
+                    button { background-color: darkred; color: #fff; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 0 10px; }
+                    button:hover { background-color: red; }
+                </style>
+            </head>
+            <body>
+        `;
 
         for (let i = 0; i < barcodeArray.length; i++) {
             const barcodeID = barcodeArray[i];
@@ -204,9 +208,6 @@ const updateScreeningResults = async (tableName, barcodeid, hcv, syphilis, hbsag
 app.post('/submitScreening', async (req, res) => {
     const { barcode, hcv, syphilis, hbsag, hiv, malaria } = req.body;
 
-    //console.log("Form data received:");
-    //console.log(`Barcode: ${barcode}, HCV: ${hcv}, Syphilis: ${syphilis}, HBsAg: ${hbsag}, HIV: ${hiv}, Malaria: ${malaria}`);
-
     try {
         const prbcUpdateResult = await pool.query(`
             UPDATE prbc 
@@ -226,25 +227,18 @@ app.post('/submitScreening', async (req, res) => {
             WHERE barcodeid = $6
         `, [hcv, syphilis, hbsag, hiv, malaria, barcode]);
 
-        res.json({ success: true, message: 'Screening results updated successfully.' });
+        if (prbcUpdateResult.rowCount === 0 && pcUpdateResult.rowCount === 0 && plasmaUpdateResult.rowCount === 0) {
+            return res.status(404).send('Barcode not found in any table.');
+        }
+
+        res.redirect('/screening.html');
     } catch (error) {
         console.error('Error updating screening results:', error);
-        res.status(500).json({ error: 'Internal server error: ' + error.message });
+        res.status(500).send('Internal server error: ' + error.message);
     }
 });
-app.post('/submit', (req, res) => {
-  console.log('Received form data');
-  console.time('Processing Time');
-
-  // Processing data...
-  // Example: DB operations, file writes, etc.
-
-  console.timeEnd('Processing Time');
-  res.send('Data received');
-});
-
 
 // Start the server
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+    console.log(`Server is running on http://localhost:${port}`);
 });
