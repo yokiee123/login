@@ -22,9 +22,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 // Route to redirect to Neocities login page
-app.get('/login', (req, res) => {
-    res.redirect('https://nmrbc.neocities.org/NMRBC/login');
-});
+//app.get('/login', (req, res) => {
+    //res.redirect('https://nmrbc.neocities.org/NMRBC/login');
+//});
 
 
 // Set up session middleware
