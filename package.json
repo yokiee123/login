@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "ejs": "^3.1.10",
+    "express": "^4.20.0",
+    "express-session": "^1.18.0",
+    "morgan": "^1.10.0",
+    "mssql": "^11.0.1",
+    "path": "^0.12.7",
+    "pg": "^8.12.0",
+    "sqlite3": "^5.1.7",
+    "xlsx": "^0.18.5"
+  }
+}
