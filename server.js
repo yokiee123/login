@@ -21,12 +21,6 @@ const pool = new Pool({
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Route to redirect to Neocities login page
-//app.get('/login', (req, res) => {
-    //res.redirect('https://nmrbc.neocities.org/NMRBC/login');
-//});
-
-
 // Set up session middleware
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key', // Use a secure secret key
@@ -65,7 +59,7 @@ app.get('/home.html', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'home.html'));
 });
 
-// Handle form submission (protected route)
+// Route to handle data submission and confirmation
 app.post('/submit', checkAuth, async (req, res) => {
     try {
         const { barcodes, dates, components, volumes } = req.body;
@@ -74,19 +68,6 @@ app.post('/submit', checkAuth, async (req, res) => {
         const dateArray = Array.isArray(dates) ? dates : [dates];
         const componentArray = Array.isArray(components) ? components : [components];
         const volumeArray = Array.isArray(volumes) ? volumes : [volumes];
-
-        let responseHtml = `
-            <html>
-            <head>
-                <style>
-                    body { font-family: Arial, sans-serif; background-color: #f4f4f4; text-align: center; }
-                    .button-container { margin-top: 20px; }
-                    button { background-color: darkred; color: #fff; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 0 10px; }
-                    button:hover { background-color: red; }
-                </style>
-            </head>
-            <body>
-        `;
 
         for (let i = 0; i < barcodeArray.length; i++) {
             const barcodeID = barcodeArray[i];
@@ -119,30 +100,37 @@ app.post('/submit', checkAuth, async (req, res) => {
                     `INSERT INTO ${table} (BARCODEID, Volume, DateCollection) VALUES ($1, $2, $3)`,
                     [barcodeID, volume, dateCollection]
                 );
-            } else {
-                responseHtml += `<p>Record with barcode ID ${barcodeID} already exists in table ${table}. Skipping insert.</p>`;
             }
         }
 
-        responseHtml += `
-            <h1>Data Submitted Successfully</h1>
-            <div class="button-container">
-                <a href="/enter_data.html">
-                    <button>Go to Enter Data</button>
-                </a>
-                <a href="/home.html">
-                    <button>Go to Home</button>
-                </a>
-            </div>
-            </body>
-            </html>
-        `;
-
-        res.send(responseHtml);
+        // Redirect to confirmation page after submission
+        res.redirect('/confirmation');
     } catch (error) {
         console.error('Error submitting data:', error);
         res.status(500).send('An error occurred while submitting data: ' + error.message + '<br><pre>' + error.stack + '</pre>');
     }
+});
+
+// Confirmation route
+app.get('/confirmation', (req, res) => {
+    res.send(`
+        <html>
+            <head>
+                <title>Confirmation</title>
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+                    h1 { color: green; }
+                    a { text-decoration: none; color: darkred; }
+                    a:hover { color: red; }
+                </style>
+            </head>
+            <body>
+                <h1>Data Submitted Successfully!</h1>
+                <p>Your data has been successfully recorded.</p>
+                <a href="/home.html">Go to Home</a>
+            </body>
+        </html>
+    `);
 });
 
 // Route to handle barcode search for blood typing
