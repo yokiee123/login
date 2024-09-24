@@ -1,27 +1,32 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
-const { Pool } = require('pg'); // Use Pool instead of Client
+const { Pool } = require('pg');
 const session = require('express-session');
 
 const app = express();
-const port = 3000;
 
-// PostgreSQL pool configuration using Neon connection string
+// Use the dynamic port assigned by Heroku or default to 3000
+const port = process.env.PORT || 3000;
+
+// PostgreSQL pool configuration using Heroku's environment variable
 const pool = new Pool({
-    connectionString: 'postgresql://postgresnmrbc_owner:AxBeF9Pfz2Rh@ep-misty-bread-a1z8p7q8-pooler.ap-southeast-1.aws.neon.tech/postgresnmrbc?sslmode=require'
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
 // Middleware to parse URL-encoded bodies
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json()); // To handle JSON requests
+app.use(bodyParser.json());
 
 // Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Set up session middleware
 app.use(session({
-    secret: 'your-secret-key', // Use a secure secret key
+    secret: process.env.SESSION_SECRET || 'your-secret-key', // Use a secure secret key
     resave: false,
     saveUninitialized: false
 }));
@@ -209,27 +214,9 @@ app.post('/submitScreening', async (req, res) => {
     const { barcode, hcv, syphilis, hbsag, hiv, malaria } = req.body;
 
     try {
-        const prbcUpdateResult = await pool.query(`
-            UPDATE prbc 
-            SET hcv = $1, syphilis = $2, hbsag = $3, hiv = $4, malaria = $5
-            WHERE barcodeid = $6
-        `, [hcv, syphilis, hbsag, hiv, malaria, barcode]);
-
-        const pcUpdateResult = await pool.query(`
-            UPDATE pc 
-            SET hcv = $1, syphilis = $2, hbsag = $3, hiv = $4, malaria = $5
-            WHERE barcodeid = $6
-        `, [hcv, syphilis, hbsag, hiv, malaria, barcode]);
-
-        const plasmaUpdateResult = await pool.query(`
-            UPDATE plasma 
-            SET hcv = $1, syphilis = $2, hbsag = $3, hiv = $4, malaria = $5
-            WHERE barcodeid = $6
-        `, [hcv, syphilis, hbsag, hiv, malaria, barcode]);
-
-        if (prbcUpdateResult.rowCount === 0 && pcUpdateResult.rowCount === 0 && plasmaUpdateResult.rowCount === 0) {
-            return res.status(404).send('Barcode not found in any table.');
-        }
+        await updateScreeningResults('prbc', barcode, hcv, syphilis, hbsag, hiv, malaria);
+        await updateScreeningResults('pc', barcode, hcv, syphilis, hbsag, hiv, malaria);
+        await updateScreeningResults('plasma', barcode, hcv, syphilis, hbsag, hiv, malaria);
 
         res.redirect('/screening.html');
     } catch (error) {
