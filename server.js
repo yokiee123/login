@@ -21,8 +21,11 @@ const pool = new Pool({
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Serve static files from the "public" directory
-app.use(express.static(path.join(__dirname, 'public')));
+// Route to redirect to Neocities login page
+app.get('/login', (req, res) => {
+    res.redirect('https://nmrbc.neocities.org/NMRBC/login');
+});
+
 
 // Set up session middleware
 app.use(session({
